@@ -3,27 +3,36 @@ package com.atguigu.exam.controller;
 
 import com.atguigu.exam.common.Result;
 import com.atguigu.exam.entity.Banner;
+import com.atguigu.exam.service.BannerService;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.conditions.query.LambdaQueryChainWrapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 轮播图控制器 - 处理轮播图管理相关的HTTP请求
  * 包括图片上传、轮播图的CRUD操作、状态切换等功能
  */
+@Slf4j
+@RequiredArgsConstructor
 @RestController  // REST控制器，返回JSON数据
 @RequestMapping("/api/banners")  // 轮播图API路径前缀
 @CrossOrigin  // 允许跨域访问
 @Tag(name = "轮播图管理", description = "轮播图相关操作，包括图片上传、轮播图增删改查、状态管理等功能")  // Swagger API分组
 public class BannerController {
 
-    
+    private final BannerService bannerService;
+
     /**
      * 上传轮播图图片
      * @param file 图片文件
@@ -55,7 +64,15 @@ public class BannerController {
     @GetMapping("/list")  // 处理GET请求
     @Operation(summary = "获取所有轮播图", description = "获取所有轮播图列表，包括启用和禁用的，供管理后台使用")  // API描述
     public Result<List<Banner>> getAllBanners() {
-        return Result.success(null);
+        LambdaQueryWrapper<Banner> wrapper = new LambdaQueryWrapper<>(Banner.class).orderByAsc(Banner::getSortOrder);
+        List<Banner> list = bannerService.list(wrapper);
+        //使用stream 去除 updateTime 字段和 isDeleted字段
+        list = list.stream().peek(banner -> {
+            banner.setUpdateTime(null);
+            banner.setIsDeleted(null);
+        }).collect(Collectors.toList());
+        log.info("后台管理部分查询所有轮播图信息成功！内容为：{}", list);
+        return Result.success(list);
     }
     
     /**
