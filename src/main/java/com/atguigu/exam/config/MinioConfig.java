@@ -11,7 +11,8 @@ import org.springframework.context.annotation.Configuration;
 
 @Slf4j
 @RequiredArgsConstructor
-@EnableConfigurationProperties(MinioProperties.class)
+//@EnableConfigurationProperties(MinioProperties.class)
+@Configuration
 public class MinioConfig {
 
     private final MinioProperties minioProperties;
