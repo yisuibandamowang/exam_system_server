@@ -11,6 +11,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.UUID;
 
 /**
  * projectName: com.atguigu.exam.service.impl
@@ -49,9 +52,13 @@ public class FileUploadServiceImpl implements FileUploadService {
                     .config(config)
                     .build());
         }
-        String objectName = folder + "/" +file.getOriginalFilename();
+        //防止重复 使用uuid 命名文件
+        //文件夹按照日期分割
+        String objectName = folder + "/" + new SimpleDateFormat("yyyy/MM/dd").format(new Date())
+                + "/" + UUID.randomUUID().toString().replaceAll("-", "") + "_"  + file.getOriginalFilename();
+        log.debug("文件上传核心业务方法，处理后的文件对象名：{}",objectName);
         //3. 上传文件
-        ObjectWriteResponse objectWriteResponse = minioClient.putObject(PutObjectArgs.builder()
+        minioClient.putObject(PutObjectArgs.builder()
                 .bucket(minioProperties.getBucketName())
                 .contentType(file.getContentType())
                 .object(objectName)
