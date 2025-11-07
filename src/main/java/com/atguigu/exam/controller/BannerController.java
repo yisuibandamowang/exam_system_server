@@ -46,7 +46,7 @@ public class BannerController {
             @RequestParam("file") MultipartFile file) throws Exception {
         String imgUrl = bannerService.uploadImage(file);
         log.info("上传图片接口调用成功！图片访问地址为: {}", imgUrl);
-        return Result.success("上传图片地址", "图片上传成功");
+        return Result.success(imgUrl, "图片上传成功");
     }
     
     /**
