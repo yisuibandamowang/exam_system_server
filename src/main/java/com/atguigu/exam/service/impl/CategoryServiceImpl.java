@@ -2,6 +2,7 @@ package com.atguigu.exam.service.impl;
 
 
 import com.atguigu.exam.entity.Category;
+import com.atguigu.exam.entity.Question;
 import com.atguigu.exam.mapper.CategoryMapper;
 import com.atguigu.exam.mapper.QuestionMapper;
 import com.atguigu.exam.service.CategoryService;
@@ -55,6 +56,65 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
         List<Category> buildTree = buildTree(allCategories);
         log.info("查询类别树状结构集合：{}",buildTree);
         return buildTree;
+    }
+
+    /**
+     * 保存分类信息
+     *   需要检查名称是否重复！
+     * @param category
+     */
+    @Override
+    public void addCategory(Category category) {
+        //1.判断同一个父类分类下不允许重名
+        // parent_id = 传入 and name = 传入
+        LambdaQueryWrapper<Category> lambdaQueryWrapper = new LambdaQueryWrapper<>();
+        lambdaQueryWrapper.eq(Category::getParentId, category.getParentId());
+        lambdaQueryWrapper.eq(Category::getName,category.getName());
+        long count = count(lambdaQueryWrapper);// count 查询存在的数量
+        //知识点： 我们可以在自己的service获取自己的mapper -> CategoryMapper baseMapper = getBaseMapper();
+        if (count > 0) {
+            Category parent = getById(category.getParentId());
+            //不能添加，同一个父类下名称重复了
+            throw new RuntimeException("在%s父分类下，已经存在名为：%s的子分类，本次添加失败！".formatted(parent.getName(),category.getName()));
+        }
+        //2.保存
+        save(category);
+    }
+
+    @Override
+    public void updateCategory(Category category) {
+        //1.先校验  同一父分类下！ 可以跟自己的name重复，不能跟其他的子分类name重复！
+        LambdaQueryWrapper<Category> lambdaQueryWrapper = new LambdaQueryWrapper<>();
+        lambdaQueryWrapper.eq(Category::getParentId, category.getParentId()); // 同一父分类下！
+        lambdaQueryWrapper.ne(Category::getId, category.getId());
+        lambdaQueryWrapper.eq(Category::getName, category.getName());
+        CategoryMapper categoryMapper = getBaseMapper();
+        boolean exists = categoryMapper.exists(lambdaQueryWrapper);
+        if (exists) {
+            Category parent = getById(category.getParentId());
+            //不能添加，同一个父类下名称重复了
+            throw new RuntimeException("在%s父分类下，已经存在名为：%s的子分类，本次更新失败！".formatted(parent.getName(),category.getName()));
+        }
+        //2.再更新
+        updateById(category);
+    }
+
+    @Override
+    public void deleteCategory(Long id) {
+        //1.检查是否一级标题
+        Category category = getById(id);
+        if (category.getParentId() == 0){
+            throw new RuntimeException("不能删除一级标题！");
+        }
+        //2.检查是否存在关联的题目
+        LambdaQueryWrapper<Question> lambdaQueryWrapper = new LambdaQueryWrapper<>();
+        lambdaQueryWrapper.eq(Question::getCategoryId,id);
+        long count = questionMapper.selectCount(lambdaQueryWrapper);
+        if (count>0){
+            throw new RuntimeException("当前的:%s分类，关联了%s道题目,无法删除！".formatted(category.getName(),count));
+        }
+        //3.以上不都不满足，删除即可【子关联数据，一并删除】
+        removeById(id);
     }
 
     // 构建树形结构的私有辅助方法
