@@ -26,3 +26,9 @@ mybatis-plus:
   global-config:
     db-config:
       logic-delete-field: isDeleted
+
+minio:
+  endpoint: http://127.0.0.1:9000
+  access-key: minioadmin
+  secret-key: minioadmin
+  bucket-name: onlinebucket
