@@ -1,6 +1,8 @@
 package com.atguigu.exam.service;
 
 import com.atguigu.exam.entity.Question;
+import com.atguigu.exam.vo.QuestionQueryVo;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 
 import java.util.List;
@@ -30,5 +32,10 @@ import java.util.List;
  */
 public interface QuestionService extends IService<Question> {
 
-
-} 
+    /**
+     * Java代码进行数据拼装！ 1+n -> 1+1+1  1
+     * @param pageBean
+     * @param questionPageVo
+     */
+    void customPageJavaService(Page<Question> pageBean, QuestionQueryVo questionPageVo);
+}
