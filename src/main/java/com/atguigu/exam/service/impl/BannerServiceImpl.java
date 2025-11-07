@@ -55,4 +55,46 @@ public class BannerServiceImpl extends ServiceImpl<BannerMapper, Banner> impleme
         log.info("完成banner图片上传，图片回显地址：{}",imgUrl);
         return imgUrl;
     }
+
+    /**
+     * 完成轮播图添加
+     * 插入失败抛出异常
+     * @param banner 【要插入的轮播图】
+     */
+    @Override
+    public void addBanner(Banner banner) {
+        //1.确认banner createTime和updateTime有时间
+        //方式1：数据库设置时间  DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
+        //方案2：代码时间赋值   set new Date();
+        //方案3：使用mybatis-plus自动填充功能 [知识点中会说明]
+        //2.判断下启动状态
+        if (banner.getIsActive() == null){
+            banner.setIsActive(true);
+        }
+        //3.判断优先级
+        if (banner.getSortOrder() == null){
+            banner.setSortOrder(0);
+        }
+        //4.进行保存
+        boolean isSuccess = save(banner);
+
+        if (!isSuccess) {
+            throw new RuntimeException("轮播图保存失败！");
+        }
+
+        log.info("轮播图保存成功！！");
+    }
+
+    /**
+     * 轮播图更新业务！
+     * 更新错误，抛出异常
+     * @param banner
+     */
+    @Override
+    public void updateBanner(Banner banner) {
+        boolean success = this.updateById(banner);
+        if (!success) {
+            throw new RuntimeException("轮播图更新失败");
+        }
+    }
 }

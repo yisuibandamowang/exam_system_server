@@ -26,4 +26,18 @@ public interface BannerService extends IService<Banner> {
      * @return 返回图片
      */
     String uploadImage(MultipartFile file) throws Exception;
+
+    /**
+     * 完成轮播图添加
+     * 插入失败抛出异常
+     * @param banner 【要插入的轮播图】
+     */
+    void addBanner(Banner banner);
+
+    /**
+     * 轮播图更新业务！
+     * 更新错误，抛出异常
+     * @param banner
+     */
+    void updateBanner(Banner banner);
 }
