@@ -38,4 +38,11 @@ public interface QuestionService extends IService<Question> {
      * @param questionPageVo
      */
     void customPageJavaService(Page<Question> pageBean, QuestionQueryVo questionPageVo);
+
+    /**
+     * 自定义查询单个题目详情
+     * @param id
+     * @return
+     */
+    Question customDetailQuestion(Long id);
 }

@@ -1,5 +1,6 @@
 package com.atguigu.exam.service.impl;
 
+import com.atguigu.exam.common.CacheConstants;
 import com.atguigu.exam.entity.Question;
 import com.atguigu.exam.entity.QuestionAnswer;
 import com.atguigu.exam.entity.QuestionChoice;
@@ -7,6 +8,7 @@ import com.atguigu.exam.mapper.QuestionAnswerMapper;
 import com.atguigu.exam.mapper.QuestionChoiceMapper;
 import com.atguigu.exam.mapper.QuestionMapper;
 import com.atguigu.exam.service.QuestionService;
+import com.atguigu.exam.utils.RedisUtils;
 import com.atguigu.exam.vo.QuestionQueryVo;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
@@ -32,6 +34,8 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
 
     private final QuestionChoiceMapper questionChoiceMapper;
     private final QuestionAnswerMapper questionAnswerMapper;
+    private final QuestionMapper questionMapper;
+    private final RedisUtils redisUtils;
 
     @Override
     public void customPageJavaService(Page<Question> pageBean, QuestionQueryVo questionPageVo) {
@@ -46,6 +50,26 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         page(pageBean,lambdaQueryWrapper);
         //2.提取一个方法， 给题目进行选项和答案装填（热门题目也需要所以提取方法）
         fillQuestionChoiceAndAnswer(pageBean.getRecords());
+    }
+
+    @Override
+    public Question customDetailQuestion(Long id) {
+        //1.查询题目详情
+        Question question = questionMapper.customGetById(id);
+        if (question == null){
+            throw  new RuntimeException("题目查询详情失败！原因可能提前被删除！题目id为：" + id);
+        }
+        //2.进行热点题目缓存
+        new Thread(() -> {
+            incrementQuestion(question.getId());
+        }).start();
+        return question;
+    }
+    //定义进行题目访问次数增长的方法
+//异步方法
+    private void incrementQuestion(Long questionId){
+        Double score = redisUtils.zIncrementScore(CacheConstants.POPULAR_QUESTIONS_KEY,questionId,1);
+        log.info("完成{}题目分数累计，累计后分数为：{}",questionId,score);
     }
 
     private void fillQuestionChoiceAndAnswer(List<Question> questionList) {
