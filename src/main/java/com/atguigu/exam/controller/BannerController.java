@@ -43,8 +43,9 @@ public class BannerController {
     @Operation(summary = "上传轮播图图片", description = "将图片文件上传到MinIO服务器，返回可访问的图片URL")  // API描述
     public Result<String> uploadBannerImage(
             @Parameter(description = "要上传的图片文件，支持jpg、png、gif等格式，大小限制5MB") 
-            @RequestParam("file") MultipartFile file) {
-
+            @RequestParam("file") MultipartFile file) throws Exception {
+        String imgUrl = bannerService.uploadImage(file);
+        log.info("上传图片接口调用成功！图片访问地址为: {}", imgUrl);
         return Result.success("上传图片地址", "图片上传成功");
     }
     
