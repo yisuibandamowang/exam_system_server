@@ -5,24 +5,32 @@ import com.atguigu.exam.entity.Paper;
 import com.atguigu.exam.service.PaperService;
 import com.atguigu.exam.vo.AiPaperVo;
 import com.atguigu.exam.vo.PaperVo;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * 试卷控制器 - 处理试卷管理相关的HTTP请求
  * 包括试卷的CRUD操作、AI智能组卷、状态管理等功能
  */
+@Slf4j
+@RequiredArgsConstructor
 @RestController  // REST控制器，返回JSON数据
 @RequestMapping("/api/papers")  // 试卷API路径前缀
 @Tag(name = "试卷管理", description = "试卷相关操作，包括创建、查询、更新、删除，以及AI智能组卷功能")  // Swagger API分组
 public class PaperController {
 
-
+    private final PaperService paperService;
 
     /**
      * 获取所有试卷列表（支持模糊搜索和状态筛选）
@@ -33,7 +41,13 @@ public class PaperController {
             @Parameter(description = "试卷名称，支持模糊查询") @RequestParam(required = false) String name,
             @Parameter(description = "试卷状态，可选值：DRAFT/PUBLISHED/STOPPED") @RequestParam(required = false) String status) {
 
-        return Result.success(null);
+        LambdaQueryWrapper<Paper> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.like(!ObjectUtils.isEmpty(name), Paper::getName, name);
+        queryWrapper.eq(!ObjectUtils.isEmpty(status), Paper::getStatus, status);
+        List<Paper> paperList = paperService.list(queryWrapper);
+        log.info("试卷列表接口调用成功！本次条件：name = {} , status = {} , 查询列表为：{}",
+                name, status, paperList);
+        return Result.success(paperList);
     }
 
     /**
@@ -57,7 +71,9 @@ public class PaperController {
     public Result<Paper> updatePaper(
             @Parameter(description = "试卷ID") @PathVariable Integer id, 
             @RequestBody PaperVo paperVo) {
-        return Result.success(null, "试卷更新成功");
+        Paper paper =  paperService.customPaperDetailById(Long.valueOf(id));
+        log.info("查询试卷详情接口成功！试卷信息为:{}",paper);
+        return Result.success(paper);
     }
 
     /**

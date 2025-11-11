@@ -23,4 +23,6 @@ public interface QuestionMapper extends BaseMapper<Question> {
     List<Map<Long, Object>> getCategoryQuestionCount();
 
     Question customGetById(Long id);
+
+    List<Question> customQueryQuestionListByPaperId(Long id);
 }
