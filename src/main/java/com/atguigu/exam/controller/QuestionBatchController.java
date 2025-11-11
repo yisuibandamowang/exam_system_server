@@ -102,10 +102,10 @@ public class QuestionBatchController {
      */
     @PostMapping("/import-questions")  // 处理POST请求
     @Operation(summary = "批量导入题目", description = "将题目列表批量导入到数据库，支持Excel解析后的导入或AI生成后的确认导入")  // API描述
-    public Result<String> importQuestions(@RequestBody List<QuestionImportVo> questions) {
-
-       return Result.error("批量导入题目失败!" );
-
+    public Result<String> importQuestions(@RequestBody List<QuestionImportVo> questions) throws IOException {
+        int successCount = Integer.parseInt(questionService.importBatchQuestions(questions));
+        log.info("批量导入题目接口调用成功！ 一共：{}题目需要导入，成功导入了：{}道题！" ,questions.size(),successCount);
+        return Result.success("批量导入题目接口调用成功！ 一共：%s 题目需要导入，成功导入了：%s 道题！".formatted(questions.size(),successCount));
     }
     
     /**

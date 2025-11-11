@@ -97,4 +97,13 @@ public interface QuestionService extends IService<Question> {
      * @return
      */
     List<QuestionImportVo> preViewExcel(MultipartFile file) throws IOException;
+
+    /**
+     * 【方法重载】
+     * 批量题目导入 [execl和ai生成批量导入]
+     *   批量数据库添加
+     * @param questionImportVoList
+     * @return Excel导入完成！成功导入 %d [工程导入] / %d [题目总数] 道题目
+     */
+    String importBatchQuestions(List<QuestionImportVo> questionImportVoList) throws IOException;
 }
