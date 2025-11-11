@@ -140,7 +140,8 @@ public class QuestionController {
     public Result<Question> updateQuestion(
             @Parameter(description = "题目ID") @PathVariable Long id, 
             @RequestBody Question question) {
-
+        questionService.customUpdateQuestion(question);
+        log.info("修改题目信息成功！！");
         return Result.success(null);
     }
     

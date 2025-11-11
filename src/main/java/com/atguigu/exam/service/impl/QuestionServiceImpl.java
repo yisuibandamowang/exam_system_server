@@ -121,6 +121,74 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         // 5.保证方法的一致性！ 需要添加事务
     }
 
+    /**
+     * 更新题目及其完整信息（包含选项和答案）
+     * <p>
+     * 业务复杂性：
+     * - 需要处理选项的增删改：删除旧选项，添加新选项
+     * - 答案更新：覆盖原有答案或新增答案
+     * - 数据完整性：确保更新过程中数据一致
+     * <p>
+     * 实现策略：
+     * 1. 更新题目主表信息
+     * 2. 删除原有选项，重新插入新选项（简化逻辑）
+     * 3. 更新或插入答案信息
+     *
+     * @param question 包含更新信息的题目对象
+     */
+    @Transactional(rollbackFor = Exception.class)
+    @Override
+    public void customUpdateQuestion(Question question) {
+        //1. 题目的校验 （不同id不运行title重复）
+        LambdaQueryWrapper<Question> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(Question::getTitle,question.getTitle());
+        queryWrapper.ne(Question::getId,question.getId());
+        boolean exists = baseMapper.exists(queryWrapper);
+        if (exists) {
+            throw new RuntimeException("修改：%s题目的新标题：%s和其他的题目重复了！修改失败！".formatted(question.getId(),question.getTitle()));
+        }
+        //2. 修改题目
+        boolean updated = updateById(question);
+        if (!updated){
+            throw new RuntimeException("修改：%s题目失败！！".formatted(question.getId()));
+        }
+        //3. 获取答案对象
+        QuestionAnswer answer = question.getAnswer();
+        //4. 判断是选择题
+        if ("CHOICE".equals(question.getType())){
+            List<QuestionChoice> choiceList = question.getChoices();
+            //删除题目对应的所有选项（原） [根据题目id删除]
+            LambdaQueryWrapper<QuestionChoice> lambdaQueryWrapper = new LambdaQueryWrapper<>();
+            lambdaQueryWrapper.eq(QuestionChoice::getQuestionId,question.getId());
+            questionChoiceMapper.delete(lambdaQueryWrapper);
+            //循环新增选项（选项上id == null）
+            // 拼接正确的档案 a,b
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < choiceList.size(); i++) {
+                QuestionChoice choice = choiceList.get(i);
+                choice.setId(null);
+                //确保，正确顺序！ 否则默认是0 随机了
+                choice.setSort(i);
+                choice.setCreateTime(null);
+                choice.setUpdateTime(null);
+                //新增选项需要！！
+                choice.setQuestionId(question.getId());
+                questionChoiceMapper.insert(choice);
+                if (choice.getIsCorrect()){
+                    if (sb.length() > 0){
+                        sb.append(",");
+                    }
+                    sb.append((char)('A'+i));
+                }
+            }
+            //答案对象赋值选择题答案
+            answer.setAnswer(sb.toString());
+        }
+        //5. 进行答案的修改
+        questionAnswerMapper.updateById(answer);
+        //6. 保证一致性，添加事务
+    }
+
     //定义进行题目访问次数增长的方法
 //异步方法
     private void incrementQuestion(Long questionId){

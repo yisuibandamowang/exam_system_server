@@ -51,4 +51,21 @@ public interface QuestionService extends IService<Question> {
      * @param question
      */
     void customSaveQuestion(Question question);
+
+    /**
+     * 更新题目及其完整信息（包含选项和答案）
+     *
+     * 业务复杂性：
+     * - 需要处理选项的增删改：删除旧选项，添加新选项
+     * - 答案更新：覆盖原有答案或新增答案
+     * - 数据完整性：确保更新过程中数据一致
+     *
+     * 实现策略：
+     * 1. 更新题目主表信息
+     * 2. 删除原有选项，重新插入新选项（简化逻辑）
+     * 3. 更新或插入答案信息
+     *
+     * @param question 包含更新信息的题目对象
+     */
+    void customUpdateQuestion(Question question);
 }
