@@ -2,18 +2,24 @@ package com.atguigu.exam.controller;
 
 
 import com.atguigu.exam.common.Result;
+import com.atguigu.exam.service.QuestionService;
 import com.atguigu.exam.utils.ExcelUtil;
 import com.atguigu.exam.vo.AiGenerateRequestVo;
 import com.atguigu.exam.vo.QuestionImportVo;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -24,18 +30,30 @@ import java.util.List;
 @RestController  // REST控制器，返回JSON数据
 @RequestMapping("/api/questions/batch")  // 题目批量操作API路径前缀
 @CrossOrigin(origins = "*")  // 允许跨域访问
+@RequiredArgsConstructor
 @Tag(name = "题目批量操作", description = "题目批量管理相关操作，包括Excel导入、AI生成题目、批量验证等功能")  // Swagger API分组
 public class QuestionBatchController {
-    
+    private final QuestionService questionService;
 
     /**
      * 下载Excel导入模板
      * @return Excel模板文件
      */
+    @SneakyThrows
     @GetMapping("/template")  // 处理GET请求
     @Operation(summary = "下载Excel导入模板", description = "下载题目批量导入的Excel模板文件")  // API描述
     public ResponseEntity<byte[]> downloadTemplate() {
-      return null;
+
+        // 1. 生成模板文件的字节数组（核心数据）
+        byte[] template = ExcelUtil.generateTemplate();
+
+        // 2. 用ResponseEntity包装结果
+        ResponseEntity<byte[]> response = ResponseEntity.ok()  // 设置状态码为200（成功）
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=question_import_template.xlsx")  // 响应头：告诉浏览器“这是附件，文件名是xxx”
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)  // 响应头：说明数据是二进制流（文件类型）
+                .body(template);  // 设置要返回的核心数据（模板字节数组）
+
+        return response;
     }
     
     /**
@@ -46,8 +64,10 @@ public class QuestionBatchController {
     @PostMapping("/preview-excel")  // 处理POST请求
     @Operation(summary = "预览Excel文件内容", description = "解析并预览Excel文件中的题目内容，不会导入到数据库")  // API描述
     public Result<List<QuestionImportVo>> previewExcel(
-            @Parameter(description = "Excel文件，支持.xls和.xlsx格式") @RequestParam("file") MultipartFile file) {
-       return null;
+            @Parameter(description = "Excel文件，支持.xls和.xlsx格式") @RequestParam("file") MultipartFile file) throws IOException {
+        List<QuestionImportVo> questionImportVoList = questionService.preViewExcel(file);
+        log.info("预览解析execl接口调用成功！题目数量：{},数据为：{}",questionImportVoList.size(),questionImportVoList);
+        return Result.success(questionImportVoList);
     }
     
     /**
