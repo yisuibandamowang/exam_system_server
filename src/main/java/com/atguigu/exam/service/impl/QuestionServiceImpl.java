@@ -17,6 +17,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
 import java.util.List;
@@ -65,6 +66,61 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         }).start();
         return question;
     }
+
+    @Transactional(rollbackFor = Exception.class)
+    @Override
+    public void customSaveQuestion(Question question) {
+        //1.一定插入题目信息 （回显题目id）
+        //同一个类型不能题目title相同
+        LambdaQueryWrapper<Question> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(Question::getType,question.getType());
+        queryWrapper.eq(Question::getTitle,question.getTitle());
+        //自己的业务或者自己的mapper: getBaseMapper() baseMapper
+        boolean exists = baseMapper.exists(queryWrapper);
+        if (exists) {
+            //同一类型，title相同
+            throw new RuntimeException("在%s下，存在%s 名称的题目已经存在！保存失败！".formatted(question.getType(),question.getTitle()));
+        }
+
+        boolean saved = save(question);
+        if (!saved){
+            //同一类型，title相同
+            throw new RuntimeException("在%s下，存在%s 名称的题目！保存失败！".formatted(question.getType(),question.getTitle()));
+        }
+        //2.获取答案对象，并先配置题目id
+        QuestionAnswer answer = question.getAnswer();
+        answer.setQuestionId(question.getId());
+        //3.判断是不是选择题
+        if ("CHOICE".equals(question.getType())){
+            //是 -》 循环 -》 选项 + 题目id -> 保存 -》 判断是不是正确 进行 AD
+            List<QuestionChoice> choices = question.getChoices();
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < choices.size(); i++) {
+                //给每个选项匹配questionId
+                // [0 [1] 2 [3] ]
+                QuestionChoice choice = choices.get(i);
+                //确保，正确顺序！ 否则默认是0 随机了
+                choice.setSort(i);
+                choice.setQuestionId(question.getId());
+                questionChoiceMapper.insert(choice);
+                if (choice.getIsCorrect()){
+                    //true 本次是正确答案
+                    if (sb.length() > 0){
+                        sb.append(",");
+                    }
+                    //B,D
+                    sb.append((char)('A'+i));
+                }
+            }
+
+            //进行答案赋值
+            answer.setAnswer(sb.toString());
+        }
+        // 4.保存答案对象
+        questionAnswerMapper.insert(answer);
+        // 5.保证方法的一致性！ 需要添加事务
+    }
+
     //定义进行题目访问次数增长的方法
 //异步方法
     private void incrementQuestion(Long questionId){
