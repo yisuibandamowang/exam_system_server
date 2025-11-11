@@ -19,12 +19,11 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -220,6 +219,56 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         //3. 删除子表 答案和选项表
         questionAnswerMapper.delete(new LambdaQueryWrapper<QuestionAnswer>().eq(QuestionAnswer::getQuestionId,id));
         questionChoiceMapper.delete(new LambdaQueryWrapper<QuestionChoice>().eq(QuestionChoice::getQuestionId,id));
+    }
+
+    @Override
+    public List<Question> customFindPopularQuestions(Integer size) {
+        //1. 定义热门题目集合（总集合）
+        List<Question> popularQuestions = new ArrayList<>();
+
+        //2. 去zset中获取热门题目，并且添加到总集合中
+        // 获取题目排行，需要获取id和分数！ 分数用于后续的排序处理！
+        Set<ZSetOperations.TypedTuple<Object>> tupleSet = redisUtils.zReverseRangeWithScores(CacheConstants.POPULAR_QUESTIONS_KEY, 0, size - 1);
+        //定义接收id的集合
+        List<Long> idsSet = new ArrayList<>();
+        if (tupleSet != null && tupleSet.size() > 0) {
+            //根据排行榜的积分，倒序进行Id查询！
+            List<Long> idsList = tupleSet.stream().sorted((o1, o2) -> Integer.compare(o2.getScore().intValue(), o1.getScore().intValue()))
+                    .map(o -> Long.valueOf(o.getValue().toString())).collect(Collectors.toList());
+            //复制，用于后面补充！！
+            idsSet.addAll(idsList);
+            log.debug("从redis获取热门题目的id集合，且保证顺序：{}",idsList);
+
+            for (Long id : idsList) {
+                Question question = getById(id);
+                if (question != null){
+                    //防止redis有缓存，但是数据库中没有！ 后续优化，删除题目，应该删除热题榜单中对应的value
+                    popularQuestions.add(question);
+                }
+            }
+            log.debug("去redis查询的热门题目，题目数：{},题目内容为：{}",popularQuestions.size(),popularQuestions);
+        }
+
+        //3. 检查是否已经满足size
+        int diff = size - popularQuestions.size();
+        if(diff > 0){
+            //4. 不满足，题目表中 非热门题目 时间倒序 limit 差数量
+            LambdaQueryWrapper<Question> lambdaQueryWrapper = new LambdaQueryWrapper<>();
+            lambdaQueryWrapper.notIn(Question::getId,idsSet);
+            lambdaQueryWrapper.orderByDesc(Question::getCreateTime);
+            //limit diff;
+            lambdaQueryWrapper.last("limit " + diff);
+            List<Question> questionDiffList = list(lambdaQueryWrapper);
+            log.debug("去question表中补充热门题目，题目数：{},题目内容为：{}",questionDiffList.size(),questionDiffList);
+            if (questionDiffList != null && questionDiffList.size() > 0) {
+                // 5. 补充也添加到总集合中
+                popularQuestions.addAll(questionDiffList);
+            }
+        }
+        //6. 总集合一起进行答案和选项填充
+        fillQuestionChoiceAndAnswer(popularQuestions);
+        //7. 返回即可
+        return popularQuestions;
     }
 
     //定义进行题目访问次数增长的方法
