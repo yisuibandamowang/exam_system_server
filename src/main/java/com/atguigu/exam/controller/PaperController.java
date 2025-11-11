@@ -56,8 +56,9 @@ public class PaperController {
     @PostMapping  // 处理POST请求
     @Operation(summary = "手动创建试卷", description = "通过手动选择题目的方式创建试卷")  // API描述
     public Result<Paper> createPaper(@RequestBody PaperVo paperVo) {
-
-        return Result.success(null, "试卷创建成功");
+        Paper paper = paperService.customCreatePaper(paperVo);
+        log.info("手动组卷成功！试卷信息为：{}",paper);
+        return Result.success(paper, "试卷创建成功");
     }
 
     /**

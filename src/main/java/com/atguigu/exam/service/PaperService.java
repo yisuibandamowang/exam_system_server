@@ -1,6 +1,7 @@
 package com.atguigu.exam.service;
 
 import com.atguigu.exam.entity.Paper;
+import com.atguigu.exam.vo.PaperVo;
 import com.baomidou.mybatisplus.extension.service.IService;
 
 /**
@@ -18,4 +19,11 @@ public interface PaperService extends IService<Paper> {
      * @return
      */
     Paper customPaperDetailById(Long id);
+
+    /**
+     * 手动组卷
+     * @param paperVo
+     * @return
+     */
+    Paper customCreatePaper(PaperVo paperVo);
 }
