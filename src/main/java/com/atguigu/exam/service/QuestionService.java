@@ -68,4 +68,14 @@ public interface QuestionService extends IService<Question> {
      * @param question 包含更新信息的题目对象
      */
     void customUpdateQuestion(Question question);
+
+    /**
+     * 删除题目
+     * 实现策略：
+     *  1. 判断试卷是有有引用题目，有，删除失败！提示！
+     *  2. 先删除子数据（选项和答案）
+     *  3. 删除主数据题目表
+     * @param id
+     */
+    void customRemoveQuestionById(Long id);
 }

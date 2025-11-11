@@ -1,9 +1,11 @@
 package com.atguigu.exam.service.impl;
 
 import com.atguigu.exam.common.CacheConstants;
+import com.atguigu.exam.entity.PaperQuestion;
 import com.atguigu.exam.entity.Question;
 import com.atguigu.exam.entity.QuestionAnswer;
 import com.atguigu.exam.entity.QuestionChoice;
+import com.atguigu.exam.mapper.PaperQuestionMapper;
 import com.atguigu.exam.mapper.QuestionAnswerMapper;
 import com.atguigu.exam.mapper.QuestionChoiceMapper;
 import com.atguigu.exam.mapper.QuestionMapper;
@@ -16,6 +18,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +40,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
     private final QuestionAnswerMapper questionAnswerMapper;
     private final QuestionMapper questionMapper;
     private final RedisUtils redisUtils;
+    private final PaperQuestionMapper paperQuestionMapper;
 
     @Override
     public void customPageJavaService(Page<Question> pageBean, QuestionQueryVo questionPageVo) {
@@ -187,6 +191,35 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         //5. 进行答案的修改
         questionAnswerMapper.updateById(answer);
         //6. 保证一致性，添加事务
+    }
+
+    /**
+     * 删除题目
+     * 实现策略：
+     * 1. 判断试卷是有有引用题目，有，删除失败！提示！
+     * 2. 先删除子数据（选项和答案）
+     * 3. 删除主数据题目表
+     *
+     * @param id
+     */
+    @Transactional(rollbackFor = Exception.class)
+    @Override
+    public void customRemoveQuestionById(Long id) {
+        //1. 判断试卷题目表，存在删除失败！
+        LambdaQueryWrapper<PaperQuestion> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(PaperQuestion::getQuestionId,id);
+        Long count = paperQuestionMapper.selectCount(queryWrapper);
+        if (count > 0){
+            throw new RuntimeException("该题目：%s 被试卷表中引用%s次，删除失败！".formatted(id,count));
+        }
+        //2. 删除主表 题目表
+        boolean removed = removeById(id);
+        if (!removed){
+            throw new RuntimeException("该题目：%s 信息删除失败！！");
+        }
+        //3. 删除子表 答案和选项表
+        questionAnswerMapper.delete(new LambdaQueryWrapper<QuestionAnswer>().eq(QuestionAnswer::getQuestionId,id));
+        questionChoiceMapper.delete(new LambdaQueryWrapper<QuestionChoice>().eq(QuestionChoice::getQuestionId,id));
     }
 
     //定义进行题目访问次数增长的方法
